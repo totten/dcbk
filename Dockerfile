@@ -72,6 +72,8 @@ RUN civi-download-tools
 # fill the caches:
 RUN civibuild cache-warmup
 
+RUN chown www-data.www-data /opt/buildkit -R
+
 ################################################################################
 ## System config: Handle service starting with runit.
 # from https://github.com/progressivetech/docker-civicrm-buildkit/blob/master/Dockerfile#L50 etc
@@ -93,6 +95,7 @@ ENV AMPHOME /var/lib/amp
 WORKDIR /root
 
 RUN mkdir "$AMPHOME" "$AMPHOME/apache.d" "$AMPHOME/log" "$AMPHOME/my.cnf.d" "$AMPHOME/nginx.d" \
+  && chown www-data.www-data "$AMPHOME" "$AMPHOME/apache.d" "$AMPHOME/log" "$AMPHOME/my.cnf.d" "$AMPHOME/nginx.d" \
   && echo "IncludeOptional $AMPHOME/apache.d/*.conf" >> /etc/apache2/apache2.conf \
   && echo "ServerName civicrm-buildkit" > /etc/apache2/conf-available/civicrm-buildkit.conf
 
@@ -100,23 +103,15 @@ COPY services.yml $AMPHOME/services.yml
 
 ################################################################################
 # user set up (path and mysql):
-RUN groupadd www \
-  && useradd -m ampuser \
-  && usermod -g www ampuser \
-  && usermod -g www www-data \
-  && echo 'declare -x PATH="/opt/buildkit/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' \
-    >> /home/ampuser/.bashrc \
-  && cp .my.cnf /home/ampuser \
-  && chown ampuser /home/ampuser/.my.cnf \
-  && chown -R ampuser:www /var/lib/amp \
-  && echo "ampuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/civicrm-buildkit \
-  && chmod -R 777 /opt/buildkit
 
+RUN echo 'export PATH="/opt/buildkit/bin:$PATH"' > /etc/profile.d/buildkit.sh \
+  && echo 'export AMPHOME=/var/lib/amp' >> /etc/profile.d/buildkit.sh \
+  && chsh -s /bin/bash www-data
 
-################################################################################
-
-# Drupal requires mod rewrite.
-# RUN a2enmod rewrite
+RUN echo "www-data ALL=(ALL) NOPASSWD: /usr/sbin/apache2ctl" >> /etc/sudoers.d/civicrm-buildkit \
+  && echo "www-data ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/civicrm-buildkit
+## FIXME ^^^: sudo is only needed for updating /etc/hosts. Maybe just chown /ec/hosts
+## and then get amp's driver for /etc/hosts to skip sudo
 
 ################################################################################
 # fixme: what doew this do??

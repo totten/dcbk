@@ -1,3 +1,15 @@
 #!/bin/bash
+
+## This file runs when the container starts.
+
+## The /var/www data-folder is generally mounted.
+cp -f /root/.my.cnf /var/www/.my.cnf
+chown www-data.www-data /var/www/.my.cnf
+chmod 777 /var/www/.my.cnf
+
+## The /opt/buildkit/build data-folder is generally mounted.
+chown www-data.www-data /opt/buildkit/build
+
+## OK, we're ready.
 export > /etc/envvars
 exec /usr/sbin/runsvdir-start
